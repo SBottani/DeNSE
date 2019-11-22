@@ -40,8 +40,6 @@ Main parameters
 
 num_neurons = 100
 
-num_omp = 8
-
 soma_radius = 3.
 use_uniform_branching = False
 use_vp = False
@@ -79,8 +77,17 @@ dendrite_params = {
 Check for optional parameters
 '''
 
+if use_run_tumble:
+    neuron_params ={
+        "persistence_length":12. * um
+    }
+
 if use_uniform_branching:
     neuron_params["uniform_branching_rate"] = 0.001
+
+
+if neuron_params.get("growth_cone_model", "") == "persistent_random_walk":
+    neuron_params["persistence_length"] = 10. * um
 
 '''
 Simulation
@@ -93,9 +100,7 @@ def step(time, loop_n, plot=True):
 
 
 if __name__ == '__main__':
-    # seed the numpy random number generators
-    np.random.seed(0)
-
+    number_of_threads = 10
     kernel = {
         "seeds": range(num_omp),
         "num_local_threads": num_omp,
@@ -104,8 +109,12 @@ if __name__ == '__main__':
         "environment_required": True,
     }
 
+    np.random.seed(12892)  # seeds for the neuron positions
+
     culture_file = current_dir + "arches_3.svg"
     ds.set_kernel_status(kernel, simulation_id="ID")
+
+
     gids, culture = None, None
     print(ds.get_kernel_status("num_local_threads"))
 
@@ -118,12 +127,15 @@ if __name__ == '__main__':
     else:
         neuron_params['position'] = np.random.uniform(-1000, 1000, (200, 2)) * um
 
+    print("Creating neurons")
     gids = ds.create_neurons(
         n=num_neurons, params=neuron_params,
         dendrites_params=dendrite_params, num_neurites=2)
 
     ds.plot.plot_neurons(show=True)
+    print("neurons done")
 
+    print("Starting simulation")
     try:
         step(5 * day, 0, False)
     except Exception as e:
@@ -131,7 +143,8 @@ if __name__ == '__main__':
     print("Simulation done")
 
     # prepare the plot
+    print("Starting plot")
     ds.plot.plot_neurons(show_density=False, dstep=4., dmax=10, cmap="jet",
                          show_neuron_id=True)
-
+    print("plot done")
     print("All done")
