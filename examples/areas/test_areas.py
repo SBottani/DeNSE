@@ -88,12 +88,12 @@ dend_params["speed_growth_cone"] = 0.001 * um / minute
 
 # ~ ds.create_neurons(n=100, on_area=top_areas, num_neurites=2)
 # ~ gids = ds.create_neurons(n=100, on_area=top_areas, num_neurites=1, params=params)
-ds.create_neurons(n=1, on_area="default_area", num_neurites=1, params=params)
+ds.create_neurons(n=11, on_area="default_area", num_neurites=1, params=params)
 
-# ~ ds.simulate(400*minute)
+ds.simulate(400*minute)
 # ~ ds.simulate(600*mniute)
-for i in range(15):
-    ds.simulate(60*minute)
-    ds.plot.plot_neurons(show=True)
+#for i in range(15):
+#   ds.simulate(60*minute)
+#   ds.plot.plot_neurons(show=True)
 
 ds.plot.plot_neurons(show=True)

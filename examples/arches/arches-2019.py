@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# 2chambers.py
+# arches.py
 #
 # This file is part of DeNSE.
 #
@@ -19,44 +19,30 @@
 # You should have received a copy of the GNU General Public License
 # along with DeNSE. If not, see <http://www.gnu.org/licenses/>.
 
-
 import os
-import shutil
 import time
-
 import numpy as np
-import matplotlib
-#matplotlib.use("GTK3Agg")
+# import matplotlib
+# matplotlib.use("Qt5Agg")
 import matplotlib.pyplot as plt
 
-import nngt
-nngt.set_config("palette", "Spectral")
 
+import nngt
 import dense as ds
 from dense.units import *
 
-try:
-    import seaborn as sns
-    sns.set(style="white", rc={"axes.facecolor": (0, 0, 0, 0)}, font_scale=1.5)
-except:
-    pass
-
-
-def CleanFolder(tmp_dir, make=True):
-    if os.path.isdir(tmp_dir):
-        shutil.rmtree(tmp_dir)
-    if make:
-        os.mkdir(tmp_dir)
-    return tmp_dir
-
-
-current_dir = os.path.abspath(os.path.dirname(__file__))
+current_dir = os.path.abspath(os.path.dirname(__file__)) + "/"
 main_dir = current_dir[:current_dir.rfind("/")]
 
 
 '''
 Main parameters
 '''
+
+num_neurons = 200
+
+# Simulation duration
+duration = 20  # in days
 
 soma_radius = 8.
 use_uniform_branching = False
@@ -108,96 +94,84 @@ if use_uniform_branching:
     neuron_params["uniform_branching_rate"] = 0.001
 
 
-if neuron_params.get("growth_cone_model", "") == "persistent_random_walk":
+if (neuron_params.get("growth_cone_model", "") ==
+   "persistent_random_walk"):
     neuron_params["persistence_length"] = 2. * um
 
 
 '''
 Simulation
-''' 
+'''
+
 def step(time, loop_n, plot=True):
     ds.simulate(time)
     if plot:
         ds.plot_neurons(show_nodes=True, show=True)
 
-
 if __name__ == '__main__':
     number_of_threads = 10
     kernel = {"seeds": range(number_of_threads),
-              "num_local_threads": number_of_threads ,
+              "num_local_threads": number_of_threads,
               "resolution": 10. * minute,
               "adaptive_timestep": -1.,
               "environment_required": True}
 
     np.random.seed(12892) # seeds for the neuron positions
+    # ok pour 35 pas pour 40
+    #np.random.seed(21829)  # seeds for the neuron positions
+    # ok pour 40
+    #np.random.seed(118239)  # seeds for the neuron positions
 
-    culture_file = current_dir + "/2chamber_culture_version2_sharper.svg"
+    culture_file = current_dir + "arches_3.svg"
     ds.set_kernel_status(kernel, simulation_id="ID")
+
     gids, culture = None, None
+    print(ds.get_kernel_status("num_local_threads"))
 
     if kernel["environment_required"]:
-        culture = ds.set_environment(culture_file, min_x=0, max_x=1500)
+        culture = ds.set_environment(culture_file, min_x=0, max_x=800)
         # generate the neurons inside the left chamber
-        pos_left = culture.seed_neurons(
-            neurons=100, xmax=440, soma_radius=soma_radius)
-        pos_right = culture.seed_neurons(
-            neurons=100, xmin=1000, soma_radius=soma_radius)
-        neuron_params['position'] = np.concatenate((pos_right, pos_left)) 
+        pos = culture.seed_neurons(
+            neurons=num_neurons, soma_radius=soma_radius, ymin=500.)
+        neuron_params['position'] = pos
     else:
         neuron_params['position'] = np.random.uniform(-1000, 1000, (200, 2)) * um
 
     print("Creating neurons")
-    gids = ds.create_neurons(n=200,
-                             culture=culture,
+    gids = ds.create_neurons(n=num_neurons,
                              params=neuron_params,
                              dendrites_params=dendrite_params,
                              num_neurites=2)
 
-    print("neurons done")
+    ds.plot.plot_neurons(show=True)
+    print("creation of neurons done")
 
     print("Starting simulation")
-    start = time.time()
-    fig, ax = plt.subplots()
-    # ~ for _ in range(10):
-        # ~ step(200, 0, True)
-    step(3 * day, 0, False)  # set duration of simulated time
-    duration = time.time() - start
-
-    print("simulation done")
+    try:
+        start = time.time()
+        fig, ax = plt.subplots()
+        step(duration * day, 0, False)
+        duration = time.time() - start
+    except Exception as e:
+        print(e)
+    print("Simulation done")
+    print("duration = {}".format(duration))
 
     # prepare the plot
-
     print("Starting plot")
-    ds.plot.plot_neurons(gid=range(100), culture=culture, soma_alpha=0.8,
-                       axon_color='g', gc_color="r", axis=ax, show=False)
-    ds.plot.plot_neurons(gid=range(100, 200), show_culture=False, axis=ax,
-                       soma_alpha=0.8, axon_color='darkorange', gc_color="r",
-                       show=False)
+    fig, ax = plt.subplots()
+    #ds.plot.plot_neurons(show_density=False, dstep=4., dmax=10, cmap="jet",
+    #                     show_neuron_id=True)
+    ds.plot.plot_neurons(culture=culture,
+                         soma_alpha=0.4,
+                         axon_color='g',
+                         gc_color="r",
+                         axis=ax,
+                         show=False)
     plt.tight_layout()
     ax.set_xlabel("x ($\mu$m)")
     ax.set_ylabel("y ($\mu$m)")
     ax.grid(False)
     plt.show()
     print("plot done")
-
-    # save
-    save_path = CleanFolder(os.path.join(os.getcwd(), "2culture_swc"))
-    ds.io.save_to_swc(filename="2chambers_test.swc", resolution=10)
-
-    #~ graph = ds.generate_network(method="spine_based", connection_proba=0.5)
-    print("\nmaking graph\n")
-    graph = ds.morphology.generate_network(connection_proba=1)
-    print("graph generated")
-    print(graph.node_nb(), graph.edge_nb())
-
-    population = nngt.NeuralPop(with_models=False)
-    population.create_group(range(100), "chamber_1")
-    population.create_group(range(100, 200), "chamber_2")
-
-    nngt.Graph.make_network(graph, population)
-    print(graph.node_nb(), graph.edge_nb())
-
-    graph.to_file("diode.el")
-
-    nngt.plot.draw_network(graph, ecolor="groups", ncolor="group",# decimate=5,
-                           show_environment=False, colorbar=False, show=True)
+    print("All done")
