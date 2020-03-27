@@ -39,17 +39,18 @@ main_dir = current_dir[:current_dir.rfind("/")]
 Main parameters
 '''
 
-num_neurons = 200
+num_neurons = 50
 
 # Simulation duration
-duration = 20  # in days
+duration = 30  # in days
 
 soma_radius = 8.
 use_uniform_branching = False
 use_vp = True
 use_run_tumble = False
 
-gc_model = 'run-and-tumble'
+#gc_model = 'run-and-tumble'
+gc_model ="simple-random-walk"
 
 neuron_params = {
     "dendrite_diameter": 3. * um,
@@ -58,12 +59,12 @@ neuron_params = {
     "use_uniform_branching": use_uniform_branching,
     "use_van_pelt": use_vp,
     "sensing_angle": 45.*deg,
-    "speed_growth_cone": 0.5 * um / minute,
-    "filopodia_wall_affinity": 500.,
+    "speed_growth_cone": 0.5 * um / minute,#0.5
+    "filopodia_wall_affinity": 1600.,
     "filopodia_finger_length": 5. * um,
     "filopodia_min_number": 30,
-    "persistence_length" : 600. * um,
-    "taper_rate": 2./1000.,
+    "persistence_length" : 500. * um, #600
+    "taper_rate": 1./2000.,
 
     "soma_radius": soma_radius * um,
     'B' : 10. * cpm,
@@ -96,7 +97,7 @@ if use_uniform_branching:
 
 if (neuron_params.get("growth_cone_model", "") ==
    "persistent_random_walk"):
-    neuron_params["persistence_length"] = 2. * um
+    neuron_params["persistence_length"] = 20. * um
 
 
 '''
@@ -122,7 +123,7 @@ if __name__ == '__main__':
     # ok pour 40
     #np.random.seed(118239)  # seeds for the neuron positions
 
-    culture_file = current_dir + "arches_3.svg"
+    culture_file = current_dir + "arches_3c.svg"
     ds.set_kernel_status(kernel, simulation_id="ID")
 
     gids, culture = None, None
@@ -132,7 +133,8 @@ if __name__ == '__main__':
         culture = ds.set_environment(culture_file, min_x=0, max_x=800)
         # generate the neurons inside the left chamber
         pos = culture.seed_neurons(
-            neurons=num_neurons, soma_radius=soma_radius, ymin=500.)
+            # upper region ymin=500.
+            neurons=num_neurons, soma_radius=soma_radius, ymin=790) 
         neuron_params['position'] = pos
     else:
         neuron_params['position'] = np.random.uniform(-1000, 1000, (200, 2)) * um
@@ -167,6 +169,10 @@ if __name__ == '__main__':
                          axon_color='g',
                          gc_color="r",
                          axis=ax,
+                         #show_density=True,
+                         #dstep=4.,
+                         #dmin=0,
+                         #dmax=10,
                          show=False)
     plt.tight_layout()
     ax.set_xlabel("x ($\mu$m)")
@@ -175,3 +181,4 @@ if __name__ == '__main__':
     plt.show()
     print("plot done")
     print("All done")
+    exit()

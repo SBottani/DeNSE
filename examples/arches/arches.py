@@ -38,7 +38,7 @@ main_dir = current_dir[:current_dir.rfind("/")]
 Main parameters
 '''
 
-num_neurons = 2
+num_neurons = 400
 
 # Simulation duration
 duration = 20  # in days
@@ -46,7 +46,7 @@ duration = 20  # in days
 soma_radius = 8.
 use_uniform_branching = False
 use_vp = True
-use_run_tumble = True
+use_run_tumble = False
 
 gc_model = 'run-and-tumble'
 
@@ -61,7 +61,7 @@ neuron_params = {
     "filopodia_wall_affinity": 500.,
     "filopodia_finger_length": 5. * um,
     "filopodia_min_number": 20,
-    "persistence_length": 600. * um,
+    "persistence_length": 400. * um,
     "taper_rate": 1./4000., 
 
     "soma_radius": soma_radius * um,
@@ -75,7 +75,7 @@ dendrite_params = {
     "growth_cone_model": gc_model,
     "speed_growth_cone": 0.05 * um / minute,
     "filopodia_wall_affinity": 10. ,
-    "persistence_length" : 200. * um,
+    "persistence_length" : 100. * um,
     "taper_rate": 3./250.,
 }
 
@@ -86,7 +86,7 @@ Check for optional parameters
 
 if use_run_tumble:
     neuron_params = {
-        "persistence_length": 600. * um #400
+        "persistence_length": 200. * um #400
     }
 
 if use_uniform_branching:
