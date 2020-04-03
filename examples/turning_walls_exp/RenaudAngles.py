@@ -50,16 +50,25 @@ max_y = 132 # set here same aspect ratio  X , Y as size of environment
 culture_file = current_dir + "/angle40.svg"
 
 neuron_params = {
-    # "gc_split_angle_mean": 30.,
+    "growth_cone_model": 'run-and-tumble'
+    "axon_angle": 0.*deg,
+    "use_uniform_branching": False,
+    "taper_rate": 4./700.,
+    "uniform_branching_rate": 0.001 * cpm,
+    "persistence_length": 400.*um,
+    "sensing_angle": 45.*deg,
+    "soma_radius": soma_radius,
+    "speed_growth_cone": 0.1*um/minute,
+    "filopodia_wall_affinity": 8000.,
+    "filopodia_finger_length": 10.*um,
+    "filopodia_min_number": 30
+        # "gc_split_angle_mean": 30.,
     # "gc_split_angle_std": 10.,
     # "B" : 6.5,
     # "E" : 0.08,
     # "S" : 1.02, # large S leads to core dump
     # "T" : 0.01,
     #~ "axon_angle":0.,
-
-    "axon_angle": 0.*deg,
-    "use_uniform_branching": False,
     # #critical_resource model
     # "critical_resource_amount":100.,
     # "critical_resource_initial_demand":1.,
@@ -70,23 +79,10 @@ neuron_params = {
     #~ "critical_resource_speed_factor": 0.5,
     # "critical_resource_split_th": 80.,
     #~ "critical_resource_split_tau": 100.,
-    "taper_rate": 4./700.,
-
-    # #lateral branching model
-    "uniform_branching_rate": 0.001 * cpm,
     # "lateral_branching_angle_mean": 50.,
     # "lateral_branching_angle_std": 20.,
 
 
-    "persistence_length": 400.*um,
-    "sensing_angle": 45.*deg,
-    "soma_radius": soma_radius,
-
-    "speed_growth_cone": 0.1*um/minute,
-
-    "filopodia_wall_affinity": 8000.,
-    "filopodia_finger_length": 10.*um,
-    "filopodia_min_number": 30
 }
 
 neuron_params['growth_cone_model'] = 'run-and-tumble'
