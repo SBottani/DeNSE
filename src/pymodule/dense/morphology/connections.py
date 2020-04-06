@@ -176,7 +176,7 @@ def generate_network(source_neurons=None, target_neurons=None,
     # for multigraphs we keep the positions as valid attributes
     if multigraph and positions is not None:
         data["synapse_position"] = np.array(positions)
-    
+
     if distances is not None:
         data["distance"] = np.array(distances)
 
@@ -279,7 +279,7 @@ def get_connections(source_neurons=None, target_neurons=None,
     source_set  = set(source_neurons)
     target_set  = set(target_neurons)
     all_neurons = source_set.union(target_set)
-    
+
     edges, positions, distances = [], [], []
 
     if all_neurons:
@@ -315,7 +315,13 @@ def _get_synapses_intersection(axon_polygon, d_polygon, synapse_density, somas,
 
     if not isinstance(intsct, MultiPolygon):
         intsct = [intsct]
-    
+
+    # if intsct.area != 0.:
+    #     if not isinstance(intsct, MultiPolygon):
+    #         intsct = [intsct]
+    # else:
+    #     intsct = []
+
     for poly in intsct:
         total        = poly.area * synapse_density * connection_probability
         rnd          = np.random.random()
@@ -352,7 +358,7 @@ def _edges_from_intersections(source_set, target_set, axons, dendrites,
                         if axon_polygon.intersects(d_polygon):
                             _get_synapses_intersection(
                                 axon_polygon, d_polygon, synapse_density,
-                                somas, connection_probability, etuple, i, j, 
+                                somas, connection_probability, etuple, i, j,
                                 edges, positions, distances)
 
     return edges, positions, distances
@@ -402,7 +408,7 @@ def _edges_from_spines(source_set, target_set, axons, dendrites, somas,
                                 # areal density
                                 insct_line = \
                                     axon_polygon.intersection(d_buffer.exterior)
-                                
+
                                 # then compute the number of synapses
                                 total   = insct_line.length * synapse_density \
                                           * connection_probability

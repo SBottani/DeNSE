@@ -170,7 +170,7 @@ void correct_polygon(
 
     lp_2 = BPoint(lp_1.x() + cos(front_angle)*diam,
                   lp_1.y() + sin(front_angle)*diam);
-    
+
     BLineString front({lp_1, lp_2});
 
     BMultiPoint mp;
@@ -178,6 +178,7 @@ void correct_polygon(
 
     if (mp.empty())
     {
+        std::cout << "empty multipoint\n";
         std::cout << bg::wkt(vec_step) << std::endl;
         std::cout << bg::wkt(front) << std::endl;
         std::cout << bg::wkt(side) << std::endl;
@@ -202,13 +203,13 @@ void correct_polygon(
         std::cout << bg::wkt(outer) << std::endl;
         std::cout << bg::wkt(old_p1) << std::endl;
         std::cout << bg::wkt(old_p2) << std::endl;
-        std::cout << bg::wkt(stop) << std::endl;
-        
+        std::cout << bg::wkt(stop) << std::endl << std::flush;
+
         throw std::runtime_error("Empty intersection correcting polygon.");
     }
 
     lp_2 = mp[0];
-    
+
     outer.push_back(lp_2);
     outer.push_back(old_p1);
 }
@@ -222,7 +223,7 @@ BPolygon SpaceManager::make_disk(BPoint position, double radius) const
 
     bg::buffer(position, geom, distance_strategy, side_strategy_,
                join_strategy_, end_strategy_, circle_strategy_);
-    
+
     return geom[0];
 }
 
@@ -293,7 +294,7 @@ void SpaceManager::add_object(const BPoint &start, const BPoint &stop,
             {
                 const std::pair<BPoint, BPoint> &last_points =
                     b->get_last_points();
-                
+
                 old_lp1 = last_points.first;
                 old_lp2 = last_points.second;
             }
@@ -306,6 +307,7 @@ void SpaceManager::add_object(const BPoint &start, const BPoint &stop,
 
             // check whether this did not create a self-crossing
             unsigned int count = 0;
+            bool checked_order = false;
 
             while (not bg::is_valid(*(poly.get()), failure))
             {
@@ -313,14 +315,35 @@ void SpaceManager::add_object(const BPoint &start, const BPoint &stop,
                 {
                     // self intersecting clear it up
                     outer.clear();
-                    
-                    if (bg::covered_by(stop, *(last_segment.get())))
+
+                    // simplest explanation is that the order of the points is wrong
+                    // invert lp_1 and lp_2
+                    if (not checked_order)
                     {
                         outer.push_back(old_lp1);
-                        outer.push_back(lp_1);
                         outer.push_back(lp_2);
+                        outer.push_back(lp_1);
                         outer.push_back(old_lp2);
                         outer.push_back(old_lp1);
+
+                        checked_order = true;
+
+                        if (not bg::is_valid(*(poly.get()), failure))
+                        {
+                            if (failure == bg::failure_self_intersections)
+                            {
+                                // this was not the reason, restore order
+                                outer.clear();
+                                outer.push_back(old_lp1);
+                                outer.push_back(lp_1);
+                                outer.push_back(lp_2);
+                                outer.push_back(old_lp2);
+                                outer.push_back(old_lp1);
+                            }
+                        }
+                    }
+                    else if (bg::covered_by(stop, *(last_segment.get())))
+                    {
                         std::cout << std::get<0>(info) << " "
                                     << std::get<1>(info)
                                     << " " << std::get<2>(info) << " "
@@ -340,7 +363,7 @@ void SpaceManager::add_object(const BPoint &start, const BPoint &stop,
                         // get intersection between new and old last points
                         BLineString ls_new({lp_1, lp_2});
                         BLineString ls_old({old_lp1, old_lp2});
-                        
+
                         BMultiPoint mp;
                         bg::intersection(ls_new, ls_old, mp);
 
@@ -406,7 +429,7 @@ void SpaceManager::add_object(const BPoint &start, const BPoint &stop,
                     break;
                 }
 
-                if (count > 5)
+                if (count > 5 or not success)
                 {
                     success = false;
                     break;
@@ -414,19 +437,15 @@ void SpaceManager::add_object(const BPoint &start, const BPoint &stop,
                 count++;
             }
 
-#ifndef NDEBUG
-                if (not bg::is_valid(*(poly.get()), message))
-                {
-                    printf("difference is empty; invalid poly %s\n",
-                           message.c_str());
-                    std::cout << "last points: " << bg::wkt(old_lp1)
-                              << " " << bg::wkt(old_lp2)
-                              << std::endl;
-                    std::cout << bg::wkt(*(poly.get())) << std::endl;
-                    std::cout << bg::wkt(*(last_segment.get())) << std::endl;
-                    success = false;
-                }
-#endif
+            if (not bg::is_valid(*(poly.get()), message))
+            {
+                std::cout << "last points: " << bg::wkt(old_lp1)
+                            << " " << bg::wkt(old_lp2)
+                            << std::endl;
+                std::cout << bg::wkt(*(poly.get())) << std::endl;
+                std::cout << bg::wkt(*(last_segment.get())) << std::endl;
+                throw std::runtime_error("Invalid polygon: " + message);
+            }
 
             if (success)
             {
@@ -442,12 +461,10 @@ void SpaceManager::add_object(const BPoint &start, const BPoint &stop,
             BBox box = bg::return_envelope<BBox>(*(poly.get()));
             box_buffer_[omp_id].push_back(std::make_tuple(info, box, true));
         }
-#ifndef NDEBUG
         else
         {
-            printf("polygon addition failed: %s\n", message.c_str());
+            throw std::runtime_error("Could not correct polygon.");
         }
-#endif
     }
 }
 
@@ -1308,7 +1325,7 @@ void SpaceManager::generate_synapses_crossings(
                             and
                             (postsyn_pop.find(presyn_id) !=
                                 postsyn_pop.end());
-                        
+
                         valid_syn  = presyn_id != postsyn_id or autapse_allowed;
 
                         if (check_syn and valid_syn)
@@ -1344,7 +1361,7 @@ void SpaceManager::generate_synapses_crossings(
 
                                     pre_syn_x.push_back(centroid.x());
                                     pre_syn_y.push_back(centroid.y());
-                                    
+
                                     presyn_neurons.push_back(presyn_id);
                                     postsyn_neurons.push_back(postsyn_id);
 
@@ -1407,7 +1424,7 @@ void SpaceManager::generate_synapses_all(
 
     point_range points_near = boost::range::join(
         new_potential_synapse_near_, old_vec_near);
-    
+
     auto all_points = boost::range::join(points_cross, points_near);
 
 #pragma omp parallel
@@ -1472,7 +1489,7 @@ void SpaceManager::generate_synapses_all(
                             (presyn_pop.find(presyn_id) != presyn_pop.end())
                             and
                             (postsyn_pop.find(presyn_id) != postsyn_pop.end());
-                        
+
                         valid_syn  = presyn_id != postsyn_id or autapse_allowed;
 
                         if (check_syn and valid_syn)
@@ -1525,7 +1542,7 @@ void SpaceManager::generate_synapses_all(
                                                  centroid);
                                     post_syn_x.push_back(centroid.x());
                                     post_syn_y.push_back(centroid.y());
-                                    
+
                                     presyn_neurons.push_back(presyn_id);
                                     postsyn_neurons.push_back(postsyn_id);
 
@@ -1915,21 +1932,14 @@ void SpaceManager::copy_polygon(BMultiPolygonPtr copy, const BMultiPolygon &p)
 
 
 void SpaceManager::set_environment(
-    GEOSGeometry *environment, const std::vector<GEOSGeometry *> &areas,
+    const std::string& env_wkt, const std::vector<std::string> &areas,
     const std::vector<double> &heights, const std::vector<std::string> &names,
     const std::vector<std::unordered_map<std::string, double>> &properties)
 {
-    const GEOSGeom env = static_cast<GEOSGeom>(environment);
-    assert(GEOSisValid_r(context_handler_, env));
-
-    GEOSWKTWriter *writer = GEOSWKTWriter_create_r(context_handler_);
-    char *wkt = GEOSWKTWriter_write_r(context_handler_, writer, environment);
-
     BPolygon env_tmp;
-    bg::read_wkt(std::string(wkt), env_tmp);
+    bg::read_wkt(env_wkt, env_tmp);
     BMultiPolygonPtr b_env = std::make_shared<BMultiPolygon>();
     copy_polygon(b_env, env_tmp);
-    delete wkt;
 
     environment_manager_ = std::unique_ptr<Environment>(new Environment(b_env));
 
@@ -1937,43 +1947,37 @@ void SpaceManager::set_environment(
     BMultiPolygon area_multi_tmp;
     BMultiPolygonPtr b_area;
 
+    std::string wkt_area;
+
     for (stype i = 0; i < areas.size(); i++)
     {
-        b_area = std::make_shared<BMultiPolygon>();
-        wkt    = GEOSWKTWriter_write_r(context_handler_, writer, areas[i]);
+        wkt_area = areas[i];
+        b_area   = std::make_shared<BMultiPolygon>();
 
-        // check area type (can be multipolygon)
-        int area_type = GEOSGeomTypeId_r(context_handler_, areas[i]);
-
-        if (area_type == GEOS_MULTIPOLYGON)
+        if (wkt_area.rfind("MULTIPOLYGON", 0) == 0)
         {
-            bg::read_wkt(std::string(wkt), area_multi_tmp);
+            bg::read_wkt(wkt_area, area_multi_tmp);
             copy_polygon(b_area, area_multi_tmp);
         }
         else
         {
-            bg::read_wkt(std::string(wkt), area_tmp);
+            bg::read_wkt(wkt_area, area_tmp);
             copy_polygon(b_area, area_tmp);
         }
-
-        delete wkt;
 
         areas_[names[i]] =
             std::make_shared<Area>(b_area, heights[i], names[i], properties[i]);
     }
-
-    GEOSWKTWriter_destroy_r(context_handler_, writer);
 
     environment_initialized_ = true;
 }
 
 
 void SpaceManager::get_environment(
-    GEOSGeom &environment, std::vector<GEOSGeometry *> &areas,
+    std::string& env_wkt, std::vector<std::string> &areas,
     std::vector<double> &heights, std::vector<std::string> &names,
     std::vector<std::unordered_map<std::string, double>> &properties) const
 {
-    GEOSWKTReader *reader = GEOSWKTReader_create_r(context_handler_);
     std::stringstream s;
 
     GEOSGeom geom_tmp, area;
@@ -1982,14 +1986,8 @@ void SpaceManager::get_environment(
     {
         s << std::setprecision(12)
           << bg::wkt(*(environment_manager_->get_environment().get()));
-        geom_tmp =
-            GEOSWKTReader_read_r(context_handler_, reader, s.str().c_str());
 
-        environment =
-            GEOSGeom_clone_r(context_handler_,
-                             GEOSGetGeometryN_r(context_handler_, geom_tmp, 0));
-
-        GEOSGeom_destroy_r(context_handler_, geom_tmp);
+        env_wkt = s.str();
     }
 
     for (auto &a : areas_)
@@ -1997,32 +1995,8 @@ void SpaceManager::get_environment(
         s.str("");
         s << bg::wkt(*(a.second->get_area().get()));
 
-        geom_tmp =
-            GEOSWKTReader_read_r(context_handler_, reader, s.str().c_str());
+        areas.push_back(s.str());
 
-        if (GEOSGetNumGeometries_r(context_handler_, geom_tmp) == 1)
-        {
-            // convert to polygon
-            area = GEOSGeom_clone_r(
-                context_handler_,
-                GEOSGetGeometryN_r(context_handler_, geom_tmp, 0));
-            // add to container
-            areas.push_back(area);
-            // delete tmp
-            GEOSGeom_destroy_r(context_handler_, geom_tmp);
-        }
-        else
-        {
-            // multipolygon: push directly to container and do not destroy
-            areas.push_back(geom_tmp);
-        }
-
-        // set properties
-
-        if (a.second == nullptr)
-        {
-            printf("trouble ahead (second)\n");
-        }
         heights.push_back(a.second->get_height());
         names.push_back(a.second->get_name());
 
@@ -2030,8 +2004,6 @@ void SpaceManager::get_environment(
         a.second->get_properties(prop);
         properties.push_back(prop);
     }
-
-    GEOSWKTReader_destroy_r(context_handler_, reader);
 }
 
 

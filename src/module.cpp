@@ -285,21 +285,21 @@ std::string get_simulation_id_() { return kernel().get_simulation_ID(); }
  */
 
 void set_environment_(
-    GEOSGeometry * environment, const std::vector<GEOSGeometry *> &areas,
-    std::vector<double> heights, const std::vector<std::string> &names,
+    const std::string& env_wkt, const std::vector<std::string> &areas,
+    const std::vector<double> &heights, const std::vector<std::string> &names,
     const std::vector<std::unordered_map<std::string, double>> &properties)
 {
-    kernel().space_manager.set_environment(environment, areas, heights, names,
+    kernel().space_manager.set_environment(env_wkt, areas, heights, names,
                                            properties);
 }
 
 
 void get_environment_(
-    GEOSGeometry *&environment, std::vector<GEOSGeometry *> &areas,
+    std::string& env_wkt, std::vector<std::string> &areas,
     std::vector<double> &heights, std::vector<std::string> &names,
     std::vector<std::unordered_map<std::string, double>> &properties)
 {
-    kernel().space_manager.get_environment(environment, areas, heights, names,
+    kernel().space_manager.get_environment(env_wkt, areas, heights, names,
                                            properties);
 }
 
@@ -660,22 +660,23 @@ void get_skeleton_(SkelNeurite &axon, SkelNeurite &dendrites,
 
 
 void get_geom_skeleton_(std::vector<stype> gids,
-                        std::vector<GEOSGeometry*>& axons,
-                        std::vector<GEOSGeometry*>& dendrites,
+                        std::vector<std::string>& axons,
+                        std::vector<std::string>& dendrites,
                         std::vector<stype>& dendrite_gids,
                         std::vector< std::vector<double> >& somas)
 {
     std::vector<GEOSGeometry *> vec;
-    //~ std::vector<BPolygon> vec_tmp;
-    //~ std::vector<BMultiPolygon> vec_geom;
     std::vector<BPolygon> vec_tmp, vec_geom;
 
     GEOSContextHandle_t ch = kernel().space_manager.get_context_handler();
     GEOSWKTReader *reader  = GEOSWKTReader_create_r(ch);
+    GEOSWKTWriter *writer  = GEOSWKTWriter_create_r(ch);
     GEOSGeometry *geom_tmp, *geom_union;
+
     std::stringstream s;
     BMultiPolygon mp;
     std::string wkt;
+    char *union_wkt;
     stype num_poly;
 
     for (stype gid : gids)
@@ -723,30 +724,32 @@ void get_geom_skeleton_(std::vector<stype> gids,
                 // growth cone position
                 BPolygon disk = kernel().space_manager.make_disk(
                     gc.second->get_position(), 0.5*gc.second->get_diameter());
-                
+
                 s.str("");
                 s << std::setprecision(12) << bg::wkt(disk);
                 geom_tmp = GEOSWKTReader_read_r(ch, reader, s.str().c_str());
                 vec.push_back(geom_tmp);
             }
 
-            //~ // create the stupid collection to make the union
+            // create the stupid collection to make the union
             geom_tmp = GEOSGeom_createCollection_r(ch, GEOS_MULTIPOLYGON,
                                                    vec.data(), vec.size());
+
             geom_union = GEOSUnaryUnion_r(ch, geom_tmp);
 
             GEOSGeom_destroy_r(ch, geom_tmp);
 
+            union_wkt = GEOSWKTWriter_write_r(ch, writer, geom_union);
+            wkt       = std::string(union_wkt);
+
             if (neurite_it->second->get_type() == "axon")
             {
-                axons.push_back(geom_union);
-                //~ axons.insert(axons.end(), vec.begin(), vec.end());
+                axons.push_back(wkt);
             }
             else
             {
-                dendrites.push_back(geom_union);
+                dendrites.push_back(wkt);
                 dendrite_gids.push_back(gid);
-                //~ dendrites.insert(dendrites.end(), vec.begin(), vec.end());
             }
 
             vec.clear();
@@ -757,6 +760,9 @@ void get_geom_skeleton_(std::vector<stype> gids,
         BPoint soma = neuron->get_position();
         somas.push_back({soma.x(), soma.y(), neuron->get_soma_radius()});
     }
+
+    GEOSWKTReader_destroy_r(ch, reader);
+    GEOSWKTWriter_destroy_r(ch, writer);
 }
 
 
@@ -778,7 +784,7 @@ void generate_synapses_(
             presyn_neurons, postsyn_neurons, presyn_neurites, postsyn_neurites,
             presyn_nodes, postsyn_nodes, presyn_segments, postsyn_segments,
             pre_syn_x, pre_syn_y);
-        
+
         post_syn_x = pre_syn_x;
         post_syn_y = pre_syn_y;
     }
