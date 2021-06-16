@@ -143,7 +143,7 @@ def plot_neurons(gid=None, mode="sticks", show_nodes=False, show_active_gc=True,
     soma_alpha = kwargs.get("soma_alpha", 0.8)
     axon_alpha = kwargs.get("axon_alpha", 0.6)
     dend_alpha = kwargs.get("dend_alpha", 0.6)
-    gc_color = kwargs.get("gc_color", "g")
+    gc_color = Kwargs.get("gc_color", "g")
 
     # get the objects describing the neurons
     if gid is None:
@@ -330,6 +330,7 @@ def plot_neurons(gid=None, mode="sticks", show_nodes=False, show_active_gc=True,
         counts[counts == 0] = np.NaN
 
         cmap = get_cmap(kwargs.get("cmap", "viridis"))
+        cmap = mpl.cm.get_cmap("viridis").copy()
         cmap.set_bad((0, 0, 0, 1))
         norm = None
         dmax = np.nanmax(counts)
@@ -338,12 +339,20 @@ def plot_neurons(gid=None, mode="sticks", show_nodes=False, show_active_gc=True,
         if dmin is not None and dmax is not None:
             n = int(dmax-dmin)
             norm = matplotlib.colors.BoundaryNorm(
-                np.arange(dmin-1, dmax+1, 0), cmap.N)
+                np.arange(dmin-1, dmax+1, 0), ncolors=cmap.N, clip=True)
         elif dmax is not None:
             n = int(dmax)
             norm = matplotlib.colors.BoundaryNorm(
-                np.arange(0, dmax+1, 1), cmap.N)
+                np.arange(0, dmax+1, 1), ncolors=cmap.N, clip=True)
+            
 
+        # When more than cmap.N (255) levels, the values above cmap.N
+        # are clipped in the last level
+
+        # Other option here is to scale the 0 to dmax levels just ot the ncolors ones
+        # check how BoundaryNorm works() why does it not scale the range of values in ncolors
+        # levels ?
+        
         # data = ax2.imshow(counts.T, extent=lims, origin="lower",
         #                   vmin=0 if dmin is None else dmin, vmax=dmax,
         #                   cmap=cmap)
